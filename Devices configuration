@@ -1,0 +1,972 @@
+#ISP router configurtion : 
+
+*genral commands :
+
+hostname ISP-Router                        ➡️                                     Change device name
+ip name-server  8.8.8.8                       ➡️                   Use Google DNS from the router
+ip name-server  1.1.1.1                         ➡️                    Use Cloudflare DNS as secondary
+ip route 0.0.0.0 0.0.0.0 dhcp  ➡️    gateway of last resort will be the  IP address provided by DHCP
+interface e0/0(connected to R5 ):
+
+description To_Enterprise_R5                       ➡️                  just note for checking and troubleshooting
+
+ip address 203.0.113.1 255.255.255.252       ➡️                give a  ip address for the router interface
+ip nat inside                    ➡️              is used to mark an interface as being on the inside ( private) side of a NAT boundary
+
+no shutdown                                              ➡️                interface turn on 
+
+interface e0/1(connected to Attacker router):
+description To_Attacker_router                    ➡️                  just note for checking and troubleshooting
+
+ip address 203.0.114.1 255.255.255.252    ➡️      give a  ip address for the router interface
+ip nat inside                    ➡️              is used to mark an interface as being on the inside ( private) side of a NAT boundary
+
+no shutdown                                                   ➡️                interface turn on 
+interface e0/2(connected to internet):
+description To_internet                                ➡️                  just note for checking and troubleshooting
+
+ip address dhcp                             ➡️                        give a  ip address for the router interface by DHCP
+ip nat outside                   ➡️                 is used to mark an interface as being on the outside(public) side of a NAT boundary
+
+no shutdown                                            ➡️                interface turn on 
+*BGP:
+
+router bgp 65000      ➡️          Start BGP  and give the (AS) a number each (AS) most have a number
+
+bgp log-neighbor-changes   ➡️  generate Syslog messages whenever a BGP neighbor changes state.
+
+
+neighbor 203.0.113.2 remote-as 65005    ➡️     ISP router neighbor (ISP  AS  65005 (R5))
+neighbor 203.0.114.2 remote-as 65010     ➡️      ISP router neighbor (ISP  AS 65010(attacker router))
+redistribute connected      ➡️         the router share his connected networks with others routers
+!
+*Clears the inbound and outbound table ,Very useful when changing routing policies
+clear ip bgp * in                                          ➡️          Refresh inbound BGP table
+clear ip bgp  *  out                                      ➡️          Refresh outbound BGP table              
+
+
+
+*ACL:
+
+ip access-list standard NAT_INSIDE        ➡️        creates a named Standard ACL called NAT_INSIDE
+
+permit 192.168.200.0 0.0.0.15                   ➡️          allows the 192.168.200.0/28 network.
+
+
+permit 203.0.114.0 0.0.0.3                       ➡️          allows the  203.0.114.0/30 network.
+permit 192.168.250.0 0.0.0.15             ➡️          allows the  192.168.250.0/28 network.
+permit 172.16.0.0  0.0.0.15                 ➡️          allows the  172.16.0.0/28 network.
+
+*Save configuration :
+
+copy running-config startup-config
+#Attaker  router configurtion : 
+*genral commands :
+hostname Attaker _router                 ➡️                                     Change device name
+ip name-server 8.8.8.8                       ➡️                   Use Google DNS from the router
+ip name-server  1.1.1.1                         ➡️                    Use Cloudflare DNS as secondary.
+ip route 0.0.0.0 0.0.0.0 203.0.114.1     ➡️    gateway of last resort will be the  IP address  
+
+interface e0/0(connected to attacker):
+description To_attacker                                  ➡️                  just note for checking and troubleshooting
+
+ip address  192.168.200.1  255.255.255.240       ➡️                give a  ip address for the router interface
+
+no shutdown                                                             ➡️                interface turn on
+
+interface e0/1(connected to ISP router:
+description To_ISP                                 ➡️                     just note for checking and troubleshooting
+
+ip address 203.0.114.2 255.255.255.252       ➡️                give a  ip address for the router interface
+
+no shutdown                                                        ➡️                interface turn on
+
+*BGP:
+router bgp 65010      ➡️          Start BGP  and give the (AS) a number each (AS) most have a number
+
+bgp log-neighbor-changes          ➡️             generate Syslog messages whenever a BGP neighbor changes state.
+
+
+neighbor 203.0.114.1 remote-as 65000   ➡️     ISP router neighbor (ISP  AS  65000  (ISP Router))
+redistribute connected           ➡️         the router share his connected networks with others routers
+
+!
+*Clears the inbound and outbound table ,Very useful when changing routing policies
+
+clear ip bgp * in                                           ➡️          Refresh inbound BGP table
+clear ip bgp  *  out                                       ➡️          Refresh outbound BGP table          
+*DHCP:
+
+
+ip dhcp excluded-address 192.168.200.1       ➡️     Don’t assign 192.168.200.1 to any DHCP client.
+
+ip dhcp excluded-address 192.168.200.2       ➡️     Don’t assign 192.168.200.2 to any DHCP client.
+
+ip dhcp pool 1                                                ➡️                      This creates a DHCP pool named “1”.
+
+network 192.168.200.0 255.255.255.240     ➡️      Defines which network the DHCP pool belongs to     
+default-router  192.168.200.1               ➡️           Sets the 192.168.200.1 as a default gateway for the DHCP clients.
+
+dns-server 8.8.8.8            ➡️           Sets the 8.8.8.8  as a DNS server for the DHCP clients.
+#Router 5 configurtion : 
+*genral commands :
+hostname R5                                                  ➡️                                     Change device name 
+
+ip name-server 8.8.8.8                       ➡️                   Use Google DNS from the router
+ip name-server  1.1.1.1                         ➡️                    Use Cloudflare DNS as secondary.
+ip route 0.0.0.0 0.0.0.0 203.0.113.1    ➡️    gateway of last resort will be the  IP address  
+
+service timestamps log datetime msec    ➡️     add timestamps to log messages
+
+*interface e0/0 (connected to FortiGate firewall) :  
+ip address 172.16.0.1 255.255.255.240         ➡️              give a  ip address for the router interface
+
+no shutdown                               ➡️                     interface turn on 
+
+description Link_to_FortiGate_port1            ➡️           just note for checking and troubleshooting
+
+
+*interface e0/1(connected to honeypot) :  
+ip address 192.168.250.1 255.255.255.240       ➡️                give a  ip address for the router interface
+
+description  to Honeypot                               ➡️                  just note for checking and troubleshooting
+no shutdown                                                   ➡️                     interface turn on 
+
+
+
+*interface e0/2 (connected to ISP  ) :
+ip address 203.0.113.2 255.255.255.252              ➡️                give a  ip address for the router interface
+
+no shutdown                                                        ➡️                interface turn on 
+
+description  ISP    ➡️          just note for checking and troubleshooting
+
+
+*BGP:
+router bgp 65005            ➡️          Start BGP  and give the (AS) a number each (AS) most have a number
+ 
+bgp log-neighbor-changes   ➡️  generate Syslog messages whenever a BGP neighbor changes state.
+
+neighbor 213.0.113.1 remote-as 65000           ➡️               ISP router neighbor (ISP  AS 65000)
+
+neighbor 213.0.113.1 description “ISP_Router                ➡️                Neighbor description
+redistribute connected       ➡️         the router share his connected networks with others routers
+redistribute ospf 10            ➡️         the router share his connected ospf networks with others routers
+!
+
+*Clears the inbound and outbound table ,Very useful when changing routing policies
+clear ip bgp * in                                          ➡️          Refresh inbound BGP table
+clear ip bgp  *  out                                      ➡️          Refresh outbound BGP table   
+*OSPF:
+router ospf 10                                  ➡️          activates the OSPF and Number 10 here is local Process ID
+router-id 5.5.5.5                              ➡️                         This identifies the Router ID, which is a unique identifier for each router in the OSPF network , It is used in the process of exchanging information
+network 172.16.0.0 0.0.0.15 area 0               ➡️      This adds network 172.16.0.0 to the OSPF process.
+network 192.168.250.0 0.0.0.15 area 0          ➡️      This adds network 192.168.250.0 to the OSPF process.
+*DHCP:
+
+
+ip dhcp excluded-address 192.168.250.1       ➡️     Don’t assign 192.168.250.1 to any DHCP client.
+
+ip dhcp excluded-address 192.168.250.2      ➡️     Don’t assign 192.168.250.2 to any DHCP client.
+
+ip dhcp pool 1                                                ➡️                      This creates a DHCP pool named “1”.
+
+network 192.168.250.0 255.255.255.240     ➡️      Defines which network the DHCP pool belongs to     
+default-router  192.168.250.1               ➡️           Sets the 192.168.200.1 as a default gateway for the DHCP clients.
+
+dns-server 8.8.8.8            ➡️           Sets the 8.8.8.8  as a DNS server for the DHCP clients.
+#Router 4 configurtion : 
+*genral commands :
+hostname R4                                                  ➡️                                     Change device name 
+
+ip name-server 8.8.8.8                       ➡️                   Use Google DNS from the router
+ip name-server  1.1.1.1                         ➡️                    Use Cloudflare DNS as secondary.
+service timestamps log datetime msec    ➡️     add timestamps to log messages
+
+ip route 0.0.0.0 0.0.0.0 172.16.0.17   ➡️    gateway of last resort will be the  IP address  
+*interface e0/0 (connected to R1  ) :
+description “To_R1”                                      ➡️                  just note for checking and troubleshooting
+
+ip address 10.0.0.1 255.255.255.252             ➡️                give a  ip address for the router interface
+
+no shutdown                                                 ➡️                     interface turn on
+
+
+*interface e0/1 (connected to R2) :
+description “To_R2“                                   ➡️                  just note for checking and troubleshooting
+
+ip address 10.0.0.5 255.255.255.252         ➡️                give a  ip address for the router interface
+
+no shutdown                                                 ➡️                     interface turn on
+
+
+*interface e0/2 (connected to R3) :
+description “To_R3”                            ➡️                  just note for checking and troubleshooting
+
+ip address 10.0.0.9 255.255.255.252         ➡️                give a  ip address for the router interface
+
+no shutdown                                             ➡️                     interface turn on
+
+
+*interface e0/3 (connected to Firewall and IPS  ) :
+description  “To_Firewall,IPS ”                      ➡️                  just note for checking and troubleshooting
+ip address 172.16.0.18 255.255.255.240        ➡️                give a  ip address for the router interface
+no shutdown                                                    ➡️                     interface turn on
+*OSPF:
+router ospf 1                         ➡️               activates the OSPF and Number 1 here is local Process ID
+
+router-id 4.4.4.4        ➡️                         This identifies the Router ID, which is a unique identifier for each router in the OSPF network , It is used in the process of exchanging information
+network 10.0.0.0 0.0.0.3 area 0                  ➡️               This adds network 10.0.0.0 to the OSPF process.
+
+network 10.0.0.4 0.0.0.3 area 0                 ➡️               This adds network 10.0.0.4 to the OSPF process.
+
+network 10.0.0.8 0.0.0.3 area 0                  ➡️               This adds network 10.0.0.8 to the OSPF process.
+
+
+#Router 1 configurtion : 
+*genral commands :
+hostname R1                                                ➡️                                     Change device name 
+
+ip name-server 8.8.8.8                       ➡️                   Use Google DNS from the router
+ip name-server  1.1.1.1                         ➡️                    Use Cloudflare DNS as secondary.
+service timestamps log datetime msec    ➡️     add timestamps to log messages
+
+*interface e0/0 (connected to L3_Switch_A  ) :
+description “To _L3_Switch_A ”                     ➡️                  just note for checking and troubleshooting
+
+ip address 10.0.0.21 255.255.255.252             ➡️                give a  ip address for the router interface
+
+no shutdown                                                     ➡️                     interface turn on
+*interface e0/1(connected to R3) :
+description “To_R3”                                ➡️                  just note for checking and troubleshooting
+
+ip address 10.0.0.14 255.255.255.252             ➡️                give a  ip address for the router interface
+
+no shutdown                                                      ➡️                     interface turn on
+*interface e0/2(connected to R2) :
+description “To_R2”                                ➡️                  just note for checking and troubleshooting
+
+ip address 10.0.0.17  255.255.255.252             ➡️                give a  ip address for the router interface
+
+no shutdown                                                      ➡️                     interface turn on
+*interface e0/3(connected to R4) :
+description “To_R4”                                ➡️                  just note for checking and troubleshooting
+
+ip address 10.0.0.2 255.255.255.252             ➡️                give a  ip address for the router interface
+
+no shutdown                                                      ➡️                     interface turn on
+*interface e1/0 (connected to L3_Switch_B ) :
+description “To _L3_Switch_B ”                     ➡️                  just note for checking and troubleshooting
+
+ip address 10.0.0.24 255.255.255.252             ➡️                give a  ip address for the router interface
+
+no shutdown                                                      ➡️                     interface turn on
+*OSPF:
+router ospf 1                      ➡️                    activates the OSPF and Number 10 here is local Process ID
+
+router-id 1.1.1.1                      ➡️                         This identifies the Router ID, which is a unique identifier for each router in the OSPF network , It is used in the process of exchanging information
+network 10.0.0.0  0.0.0.3 area 0              ➡️            This adds network 10.0.0.0  to the OSPF process. 
+
+network 10.0.0.12 0.0.0.3 area 0             ➡️            This adds network 10.0.0.12 to the OSPF process.    
+
+network 10.0.0.16 0.0.0.3 area 0              ➡️            This adds network 10.0.0.16 to the OSPF process.   
+
+network 10.0.0.20 0.0.0.3 area 0              ➡️            This adds network 10.0.0.20 to the OSPF process. 
+  
+network 10.0.0.24 0.0.0.3 area 0               ➡️            This adds network 10.0.0.24 to the OSPF process. 
+#Router 2 configurtion : 
+*genral commands :
+hostname R2                                               ➡️                                     Change device name 
+
+ip name-server 8.8.8.8                       ➡️                   Use Google DNS from the router
+ip name-server  1.1.1.1                         ➡️                    Use Cloudflare DNS as secondary.
+service timestamps log datetime msec    ➡️     add timestamps to log messages
+
+*interface e0/0 (connected to L3_Switch_B ) :
+description “To _L3_Switch_B ”                     ➡️                  just note for checking and troubleshooting
+
+ip address 10.0.0.33 255.255.255.252             ➡️                give a  ip address for the router interface
+
+no shutdown                                                     ➡️                     interface turn on
+*interface e0/1(connected to R1) :
+description “To_R1”                                ➡️                  just note for checking and troubleshooting
+
+ip address 10.0.0.18 255.255.255.252             ➡️                give a  ip address for the router interface
+
+no shutdown                                                      ➡️                     interface turn on
+*interface e0/2(connected to R4) :
+description “To_R4”                                ➡️                  just note for checking and troubleshooting
+
+ip address 10.0.0.6 255.255.255.252             ➡️                give a  ip address for the router interface
+
+no shutdown                                                      ➡️                     interface turn on
+*interface e0/3(connected to L3_Switch_A ) :
+description “To_L3_Switch_A”                        ➡️                  just note for checking and troubleshooting
+
+ip address 10.0.0.29 255.255.255.252             ➡️                give a  ip address for the router interface
+
+no shutdown                                                      ➡️                     interface turn on
+*OSPF:
+router ospf 1                      ➡️                    activates the OSPF and Number 10 here is local Process ID
+
+router-id 2.2.2.2                      ➡️                         This identifies the Router ID, which is a unique identifier for each router in the OSPF network , It is used in the process of exchanging information
+network 10.0.0.4  0.0.0.3 area 0              ➡️            This adds network 10.0.0.4  to the OSPF process. 
+
+network 10.0.0.16 0.0.0.3 area 0              ➡️            This adds network 10.0.0.16 to the OSPF process.   
+
+network 10.0.0.28 0.0.0.3 area 0              ➡️            This adds network 10.0.0.28 to the OSPF process. 
+  
+network 10.0.0.32 0.0.0.3 area 0               ➡️            This adds network 10.0.0.32 to the OSPF process. 
+#Router 3 configurtion : 
+*genral commands :
+hostname R3                                               ➡️                                     Change device name 
+
+ip name-server 8.8.8.8                       ➡️                   Use Google DNS from the router
+ip name-server  1.1.1.1                         ➡️                    Use Cloudflare DNS as secondary.
+service timestamps log datetime msec    ➡️     add timestamps to log messages
+
+*interface e0/0 (connected to L3_Switch_B ) :
+description “To _L3_Switch_B ”                     ➡️                  just note for checking and troubleshooting
+
+ip address 10.0.0.37 255.255.255.252             ➡️                give a  ip address for the router interface
+
+no shutdown                                                     ➡️                     interface turn on
+*interface e0/1(connected to R1) :
+description “To_R1”                                ➡️                  just note for checking and troubleshooting
+
+ip address 10.0.0.14 255.255.255.252             ➡️                give a  ip address for the router interface
+
+no shutdown                                                      ➡️                     interface turn on
+*interface e0/2(connected to R4) :
+description “To_R4”                                ➡️                  just note for checking and troubleshooting
+
+ip address 10.0.0.10 255.255.255.252             ➡️                give a  ip address for the router interface
+
+no shutdown                                                      ➡️                     interface turn on
+*interface e0/3(connected to L3_Switch_A ) :
+description “To_L3_Switch_A”                        ➡️                  just note for checking and troubleshooting
+
+ip address 10.0.0.41 255.255.255.252             ➡️                give a  ip address for the router interface
+
+no shutdown                                                      ➡️                     interface turn on
+*OSPF:
+router ospf 1                      ➡️                    activates the OSPF and Number 10 here is local Process ID
+
+router-id 3.3.3.3                      ➡️                         This identifies the Router ID, which is a unique identifier for each router in the OSPF network , It is used in the process of exchanging information
+network 10.0.0.8  0.0.0.3 area 0              ➡️            This adds network 10.0.0.8  to the OSPF process. 
+
+network 10.0.0.12 0.0.0.3 area 0              ➡️            This adds network 10.0.0.12 to the OSPF process.   
+
+network 10.0.0.36 0.0.0.3 area 0              ➡️            This adds network 10.0.0.36 to the OSPF process. 
+  
+network 10.0.0.40 0.0.0.3 area 0               ➡️            This adds network 10.0.0.40 to the OSPF process. 
+*A_L3_Switch:
+*genral commands :
+hostname  A_L3_Switch                                       ➡️                                     Change device name 
+
+ip name-server 8.8.8.8                       ➡️                   Use Google DNS from the router
+ip name-server  1.1.1.1                         ➡️                    Use Cloudflare DNS as secondary.
+service timestamps log datetime msec    ➡️     add timestamps to log messages
+
+ip routing            ➡️             The switch uses Layer 3 functionality and performs the routing process.
+
+spanning-tree vlan 10,20,30 priority 4096      ➡️       Lowers the STP priority so L3-A becomes root bridge for those VLANs.
+spanning-tree mode rapid-pvst       ➡️      provides fast convergence and reduces downtime.
+
+
+*VLANs  : 
+vlan 10                           ➡️                      creates VLAN 10 in the VLAN database 
+
+vlan 20                          ➡️                      creates VLAN 20 in the VLAN database 
+
+vlan 30                          ➡️                      creates VLAN 30 in the VLAN database 
+
+                                                                               VLAN 10  
+interface vlan 10            ➡️                 creates a Layer 3 SVI (Switched Virtual Interface) for that VLAN
+
+ip address 192.168.10.1 255.255.255.0        ➡️      this is the default gateway IP for hosts in that VLAN
+
+no shutdown                                            ➡️                                    activates the SVI.
+
+                                                                                VLAN 20  
+interface vlan 20            ➡️                 creates a Layer 3 SVI (Switched Virtual Interface) for that VLAN
+
+ip address 192.168.20.1 255.255.255.0       ➡️      this is the default gateway IP for hosts in that VLAN
+
+no shutdown                                     ➡️                                    activates the SVI.
+
+                                                                               VLAN 30  
+interface vlan 30            ➡️                 creates a Layer 3 SVI (Switched Virtual Interface) for that VLAN
+
+ip address 192.168.30.1 255.255.255.0       ➡️      this is the default gateway IP for hosts in that VLAN
+
+no shutdown                                  ➡️                                    activates the SVI.
+*Trunks :
+interface range Ethernet1/0-3   ➡️   selects multiple interfaces at the same time, allowing you to configure them together
+
+switchport mode trunk                        ➡️                A trunk carries traffic from multiple VLANs.
+
+switchport trunk encapsulation dot1q          ➡️       Specifies IEEE 802.1Q encapsulation for VLAN tagging on the trunk.
+
+switchport trunk allowed vlan 10,20,30       ➡️      Allows only VLANs 10, 20, 30 to pass on this trunk.
+
+spanning-tree portfast trunk      ➡️      This trunk is connected to a device that won’t create a loop
+
+
+no shutdown                                             ➡️                     interface turn on
+
+*interface Ethernet0/0(connected to R3) :
+
+description “To_R3”                 ➡️                  just note for checking and troubleshooting
+
+no switchport        ➡️      Converts the interface to a routed port (Layer 3 port) instead of a switchport.
+
+ip address 10.0.0.42 255.255.255.252                ➡️                give a  ip address for the router interface
+
+no shutdown                                             ➡️                     interface turn on
+
+*interface Ethernet0/1(connected to R1) :
+
+description “To_R1”                 ➡️                  just note for checking and troubleshooting
+
+no switchport        ➡️      Converts the interface to a routed port (Layer 3 port) instead of a switchport.
+
+ip address 10.0.0.26 255.255.255.252                ➡️                give a  ip address for the router interface
+
+no shutdown                                             ➡️                     interface turn on
+
+*interface Ethernet0/2(connected to R2) :
+
+description “To_R2”                 ➡️                  just note for checking and troubleshooting
+
+no switchport        ➡️      Converts the interface to a routed port (Layer 3 port) instead of a switchport.
+
+ip address 10.0.0.30 255.255.255.252                ➡️                give a  ip address for the router interface
+
+no shutdown                                             ➡️                     interface turn on
+*DHCP : 
+ip dhcp excluded-address 192.168.10.1-3 ➡️  Don’t assign 192.168.10.1 -3to any DHCP client.
+
+
+ip dhcp excluded-address 192.168.20.1 -3➡️  Don’t assign 192.168.20.1-3 to any DHCP client.
+
+ip dhcp excluded-address 192.168.30.1-3 ➡️  Don’t assign 192.168.30.1-3 to any DHCP client.
+ip dhcp pool VLAN10-POOL                      ➡️               This creates a DHCP pool named “VLAN10-POOL ”.
+
+network 192.168.10.0 255.255.255.0    ➡️      Defines which network the DHCP pool belongs to     
+
+default-router 192.168.10.1              ➡️           Sets the 192.168.10.1 as a default gateway for the DHCP clients.
+
+dns-server 8.8.8.8           ➡️           Sets the 8.8.8.8  as a DNS server for the DHCP clients.
+
+
+ip dhcp pool VLAN20-POOL                     ➡️               This creates a DHCP pool named “VLAN20-POOL ”.
+ 
+network 192.168.20.0 255.255.255.0    ➡️      Defines which network the DHCP pool belongs to     
+
+default-router 192.168.20.1              ➡️           Sets the 192.168.20.1 as a default gateway for the DHCP clients.
+dns-server 8.8.8.8           ➡️           Sets the 8.8.8.8  as a DNS server for the DHCP clients.
+
+ip dhcp pool VLAN30-POOL                     ➡️               This creates a DHCP pool named “VLAN30-POOL ”.
+
+network 192.168.30.0 255.255.255.0    ➡️      Defines which network the DHCP pool belongs to     
+
+default-router 192.168.30.1              ➡️           Sets the 192.168.30.1 as a default gateway for the DHCP clients.
+
+dns-server 8.8.8.8           ➡️           Sets the 8.8.8.8  as a DNS server for the DHCP clients.
+*OSPF:
+router ospf 1                      ➡️                    activates the OSPF and Number 10 here is local Process ID
+
+router-id 10.10.10.10                  ➡️                         This identifies the Router ID, which is a unique identifier for each router in the OSPF network , It is used in the process of exchanging information
+network 10.0.0.40  0.0.0.3 area 0              ➡️            This adds network 10.0.0.40  to the OSPF process. 
+
+network 10.0.0.24 0.0.0.3 area 0              ➡️            This adds network 10.0.0.24 to the OSPF process.   
+
+network 10.0.0.28 0.0.0.3 area 0              ➡️            This adds network 10.0.0.36 to the OSPF process. 
+*B_L3_Switch:
+*genral commands :
+hostname  B_L3_Switch                                       ➡️                                     Change device name 
+
+ip name-server 8.8.8.8                       ➡️                   Use Google DNS from the router
+ip name-server  1.1.1.1                         ➡️                    Use Cloudflare DNS as secondary.
+service timestamps log datetime msec    ➡️     add timestamps to log messages
+
+ip routing            ➡️             The switch uses Layer 3 functionality and performs the routing process.
+
+spanning-tree vlan 10,20,30 priority  8192      ➡️       Lowers the STP priority so L3-B becomes secondery root  bridge for those VLANs.
+spanning-tree mode rapid-pvst       ➡️      provides fast convergence and reduces downtime.
+
+
+*VLANs  : 
+vlan 10                           ➡️                      creates VLAN 10 in the VLAN database 
+
+vlan 20                          ➡️                      creates VLAN 20 in the VLAN database 
+
+vlan 30                          ➡️                      creates VLAN 30 in the VLAN database 
+
+*Trunks  :
+interface range Ethernet1/0-3   ➡️   selects multiple interfaces at the same time, allowing you to configure them together
+
+switchport mode trunk                        ➡️                A trunk carries traffic from multiple VLANs.
+
+switchport trunk encapsulation dot1q          ➡️       Specifies IEEE 802.1Q encapsulation for VLAN tagging on the trunk.
+
+switchport trunk allowed vlan 10,20,30       ➡️      Allows only VLANs 10, 20, 30 to pass on this trunk.
+
+spanning-tree portfast trunk      ➡️      This trunk is connected to a device that won’t create a loop
+no shutdown                                             ➡️                     interface turn on
+
+*interface Ethernet0/0(connected to R2) :
+
+description “To_R2”                 ➡️                  just note for checking and troubleshooting
+
+no switchport        ➡️      Converts the interface to a routed port (Layer 3 port) instead of a switchport.
+
+ip address 10.0.0.34 255.255.255.252                ➡️                give a  ip address for the router interface
+
+no shutdown                                             ➡️                     interface turn on
+
+*interface Ethernet0/1(connected to R1) :
+
+description “To_R1”                 ➡️                  just note for checking and troubleshooting
+
+no switchport        ➡️      Converts the interface to a routed port (Layer 3 port) instead of a switchport.
+
+ip address 10.0.0.22 255.255.255.252                ➡️                give a  ip address for the router interface
+
+no shutdown                                             ➡️                     interface turn on
+
+*interface Ethernet0/2(connected to R2) :
+
+description “To_R3”                 ➡️                  just note for checking and troubleshooting
+
+no switchport        ➡️      Converts the interface to a routed port (Layer 3 port) instead of a switchport.
+
+ip address 10.0.0.38 255.255.255.252                ➡️                give a  ip address for the router interface
+
+no shutdown                                             ➡️                     interface turn on
+
+*OSPF:
+router ospf 1                      ➡️                    activates the OSPF and Number 10 here is local Process ID
+
+router-id 10.10.10.10                  ➡️                         This identifies the Router ID, which is a unique identifier for each router in the OSPF network , It is used in the process of exchanging information
+network 10.0.0.20  0.0.0.3 area 0              ➡️            This adds network 10.0.0.40  to the OSPF process. 
+
+network 10.0.0.32 0.0.0.3 area 0              ➡️            This adds network 10.0.0.24 to the OSPF process.   
+
+network 10.0.0.36 0.0.0.3 area 0              ➡️            This adds network 10.0.0.36 to the OSPF process. 
+*Switch 1 :
+*genral commands :
+hostname  S1                                 ➡️                                     Change device name 
+
+ip name-server 8.8.8.8                       ➡️                   Use Google DNS from the router
+ip name-server  1.1.1.1                         ➡️                    Use Cloudflare DNS as secondary.
+service timestamps log datetime msec    ➡️     add timestamps to log messages
+
+spanning-tree mode rapid-pvst       ➡️      provides fast convergence and reduces downtime.
+*VLANs  : 
+vlan 10                           ➡️                      creates VLAN 10 in the VLAN database 
+
+vlan 20                          ➡️                      creates VLAN 20 in the VLAN database 
+
+vlan 30                          ➡️                      creates VLAN 30 in the VLAN database 
+
+*Access :
+
+
+interface range Ethernet0/0-2         ➡️          selects multiple interfaces at the same time, allowing you to configure them together
+
+switchport mode access   ➡️                  Forces the port to operate as an access port (single VLAN).
+
+switchport access vlan 30   ➡️         Assigns the access VLAN (here, VLAN 30) to this port.
+
+spanning-tree portfast        ➡️      This access is connected to a device that won’t create a loop 
+
+spanning-tree bpduguard enable     ➡️    If a BPDU is received on this port, it will err-disable the port (protection against loops when someone plugs a switch into a user port).
+
+no shutdown                                             ➡️                     interface turn on
+
+*Trunks  :
+interface range Ethernet 0/3 ,  Ethernet 1/1,  Ethernet 1/0   ➡️   selects multiple interfaces at the same time, allowing you to configure them together
+
+switchport mode trunk                        ➡️                A trunk carries traffic from multiple VLANs.
+
+switchport trunk encapsulation dot1q          ➡️       Specifies IEEE 802.1Q encapsulation for VLAN tagging on the trunk.
+
+switchport trunk allowed vlan 10,20,30       ➡️      Allows only VLANs 10, 20, 30 to pass on this trunk.
+
+spanning-tree portfast trunk      ➡️      This trunk is connected to a device that won’t create a loop
+no shutdown                                             ➡️                     interface turn on
+
+
+*Switch 2 :
+*genral commands :
+hostname S2                                    ➡️                                     Change device name 
+
+ip name-server 8.8.8.8                       ➡️                   Use Google DNS from the router
+ip name-server  1.1.1.1                         ➡️                    Use Cloudflare DNS as secondary.
+service timestamps log datetime msec    ➡️     add timestamps to log messages
+
+
+spanning-tree mode rapid-pvst       ➡️      provides fast convergence and reduces downtime.
+*VLANs  : 
+vlan 10                           ➡️                      creates VLAN 10 in the VLAN database 
+
+vlan 20                          ➡️                      creates VLAN 20 in the VLAN database 
+
+vlan 30                          ➡️                      creates VLAN 30 in the VLAN database 
+
+*Access :
+
+
+interface range Ethernet0/0-2         ➡️          selects multiple interfaces at the same time, allowing you to configure them together
+
+switchport mode access   ➡️                  Forces the port to operate as an access port (single VLAN).
+
+switchport access vlan 10   ➡️         Assigns the access VLAN (here, VLAN 10) to this port.
+
+spanning-tree portfast        ➡️      This access is connected to a device that won’t create a loop 
+
+spanning-tree bpduguard enable     ➡️    If a BPDU is received on this port, it will err-disable the port (protection against loops when someone plugs a switch into a user port).
+
+no shutdown                                             ➡️                     interface turn on
+
+*Trunks  :
+interface range  Ethernet 1/0  ,  Ethernet 1/1 , Ethernet 1/2,  Ethernet 0/3   ➡️   selects multiple interfaces at the same time, allowing you to configure them together
+
+switchport mode trunk                        ➡️                A trunk carries traffic from multiple VLANs.
+
+switchport trunk encapsulation dot1q          ➡️       Specifies IEEE 802.1Q encapsulation for VLAN tagging on the trunk.
+
+switchport trunk allowed vlan 10,20,30       ➡️      Allows only VLANs 10, 20, 30 to pass on this trunk.
+
+spanning-tree portfast trunk      ➡️      This trunk is connected to a device that won’t create a loop
+no shutdown                                             ➡️                     interface turn on
+
+*Switch 3 :
+*genral commands :
+hostname S3                                   ➡️                                     Change device name 
+
+ip name-server 8.8.8.8                       ➡️                   Use Google DNS from the router
+ip name-server  1.1.1.1                         ➡️                    Use Cloudflare DNS as secondary.
+service timestamps log datetime msec    ➡️     add timestamps to log messages
+
+
+spanning-tree mode rapid-pvst       ➡️      provides fast convergence and reduces downtime.
+*VLANs  : 
+vlan 10                           ➡️                      creates VLAN 10 in the VLAN database 
+
+vlan 20                          ➡️                      creates VLAN 20 in the VLAN database 
+
+vlan 30                          ➡️                      creates VLAN 30 in the VLAN database 
+
+*Access :
+
+
+interface range Ethernet0/0-2         ➡️          selects multiple interfaces at the same time, allowing you to configure them together
+
+switchport mode access   ➡️                  Forces the port to operate as an access port (single VLAN).
+
+switchport access vlan 20   ➡️         Assigns the access VLAN (here, VLAN 20) to this port.
+
+spanning-tree portfast        ➡️      This access is connected to a device that won’t create a loop 
+
+spanning-tree bpduguard enable     ➡️    If a BPDU is received on this port, it will err-disable the port (protection against loops when someone plugs a switch into a user port).
+
+no shutdown                                             ➡️                     interface turn on
+
+*Trunks  :
+interface range Ethernet 1/0  ,  Ethernet 1/1,   Ethernet 1/2 ,Ethernet 0/3    ➡️   selects multiple interfaces at the same time, allowing you to configure them together
+
+switchport mode trunk                        ➡️                A trunk carries traffic from multiple VLANs.
+
+switchport trunk encapsulation dot1q          ➡️       Specifies IEEE 802.1Q encapsulation for VLAN tagging on the trunk.
+
+switchport trunk allowed vlan 10,20,30       ➡️      Allows only VLANs 10, 20, 30 to pass on this trunk.
+
+spanning-tree portfast trunk      ➡️      This trunk is connected to a device that won’t create a loop
+no shutdown                                             ➡️                     interface turn on
+*Switch 4 :
+*genral commands :
+hostname S4                                  ➡️                                     Change device name 
+
+ip name-server 8.8.8.8                       ➡️                   Use Google DNS from the router
+ip name-server  1.1.1.1                         ➡️                    Use Cloudflare DNS as secondary.
+service timestamps log datetime msec    ➡️     add timestamps to log messages
+
+
+spanning-tree mode rapid-pvst       ➡️      provides fast convergence and reduces downtime.
+*VLANs  : 
+vlan 10                           ➡️                      creates VLAN 10 in the VLAN database 
+
+vlan 20                          ➡️                      creates VLAN 20 in the VLAN database 
+
+vlan 30                          ➡️                      creates VLAN 30 in the VLAN database 
+
+*Trunks  :
+interface range Ethernet 0/0-3 ,   Ethernet 1/0    ➡️   selects multiple interfaces at the same time, allowing you to configure them together
+
+switchport mode trunk                        ➡️                A trunk carries traffic from multiple VLANs.
+
+switchport trunk encapsulation dot1q          ➡️       Specifies IEEE 802.1Q encapsulation for VLAN tagging on the trunk.
+
+switchport trunk allowed vlan 10,20,30       ➡️      Allows only VLANs 10, 20, 30 to pass on this trunk.
+
+spanning-tree portfast trunk      ➡️      This trunk is connected to a device that won’t create a loop
+no shutdown                                             ➡️                     interface turn on
+#Fortigate Firewall configurtion :
+user name : admin
+password : admin123 
+
+*genral command : 
+
+
+config system global                                        ➡️                       Enter global system configuration mode.
+set hostname FortiGate                                   ➡️                      Set the device hostname to  FortiGat
+set admintimeout 480                    ➡️                          Sets the idle timeout for admin sessions (in minutes)
+execute backup config flash                           ➡️                      Save running config to flash
+
+show system interface                                     ➡️                        show running configuration    
+*port 1 (to R5 ) :
+config system interface                                 ➡️                       Enter interface configuration mode.
+ 
+edit port1                                                           ➡️                        Select interface object named port1 
+
+set alias "to_R5"                                               ➡️                       label for the interface
+set mode static                                                ➡️                  give tht interface ip static
+
+set ip 172.16.0.2  255.255.255.240                ➡️                       Assign IP for the port
+
+set allowaccess ping https ssh   ➡️  how you can access or manage the firewall through that interface
+
+set role wan                         ➡️                Interfaces page will label it as a WAN connection.
+
+*port 2 (to IPS ) :
+config system interface                                 ➡️                       Enter interface configuration mode.
+ 
+edit port2                                                           ➡️                        Select interface object named port2
+
+set alias "to_IPS"                                               ➡️                       label for the interface
+set mode static                                                ➡️                  give tht interface ip static
+
+set ip 172.16.0.17  255.255.255.240             ➡️                   Assign IP for the port
+
+set allowaccess ping https ssh   ➡️  how you can access or manage the firewall through that interface
+
+set role lan                                                        ➡️                Interfaces page will label it as a LANconnection.
+
+
+*DNS : 
+
+config system dns                              ➡️                            Enter DNS config
+                          
+set primary 8.8.8.8                              ➡️                      Use Google DNS as primary 
+
+set secondary 1.1.1.1                            ➡️                 Use Cloudflare DNS as secondary.
+
+*router :
+
+
+config router static                           ➡️                 enter static routes
+
+edit 1                                                     ➡️                create default route entry
+ 
+set device "port1"                              ➡️              send default traffic out of port1 
+               
+set gateway 172.16.0.1                       ➡️                 set a gateway for a firewall
+*OSPF:
+config router ospf                             ➡️                     enter to ospf configration mode   
+
+set router-id  17.17.17.17                    ➡️                     assigns a unique OSPF Router ID for this FortiGate.
+set default-information-originate enable        ➡️     To make FortiGate share (advertise) OSPF routes AND the default-gateway (0.0.0.0/0)
+
+config area                         ➡️                 enter to area configuration mode inside  ospf configration mode
+
+edit 0.0.0.0                                         ➡️                    editing Area 0.0.0.0 (the main and common area)
+
+config network             ➡️              enter to network configuration mode inside  ospf configration mode
+
+edit 1
+set prefix 172.16.0.0 255.255.255.240 ➡️   advertise the subnet 172.16.0.0/28 into OSPF, 
+
+edit 2
+set prefix 172.16.0.16 255.255.255.240➡️   advertise the subnet 172.16.0.16/28 into OSPF, 
+
+
+*prefix-list :
+config router prefix-list                ➡️                                  filter list for IP prefixes
+
+edit "PL-DEFAULT”                    ➡️                                       Create a prefix list called PL-DEFAULT
+
+ config rule                                ➡️                                      Start rule #1 inside that list.
+edit 1
+set prefix 0.0.0.0 0.0.0.0               ➡️                                   Match the default route (0.0.0.0/0) only.
+
+*we just created a list that matches only one route — the default route (the “Internet” route) This is used to control what FortiGate will share with its neighbors (like the FortiGate tile neighbors Use me as the way to the internet.).
+*Ruls : 
+
+
+This is the actual firewall rule that permits your inside users to access the Internet.
+Command                                                           What it does
+
+edit 1	                                                              Create rule #1 list .
+set name "INSIDE_to_WAN"                           Label it “INSIDE_to_WAN” for clarity.
+set srcintf "port2"	                                      Source interface = LAN side (toward R4/internal network).
+set dstintf "port1"	         Destination interface = WAN side (toward R5/Internet).
+set srcaddr "ANY"               Source address object = any.
+set dstaddr "ANY"	         Destination address object = any.
+set action accept	         Allow this traffic (as opposed to deny).
+set schedule "always"	 Rule is active all the time.
+set service "ALL"	                 Allow all protocols/ports (you can later limit to HTTP, HTTPS, DNS, etc.).
+set nat enable	                 Enable source NAT (so internal IPs are translated to FG’s WAN IP 172.16.0.2).
+
+
+
+*FIREWALL POLICIES : 
+  
+config firewall policy  ➡️  Enters the firewall policy configuration section in FortiOS CLI
+python
+
+edit 2     ➡️      Creates or edits firewall policy with ID number 1 
+set name "P-R4_to_R5"    ➡️    Assigns a descriptive name to the policy for easier identification
+
+set srcintf "port2”     ➡️     Specifies port1 as the source interface where traffic originates
+
+set dstintf "port1"    ➡️    Specifies port2 as the destination interface where traffic is going
+
+set srcaddr "all"       ➡️        Allows traffic from any source IP address 
+
+set dstaddr "all"       ➡️      Allows traffic to any destination IP address
+
+set action accept  ➡️  Permits (allows) matching traffic to pass through the firewall
+
+set schedule "always"  ➡️  Policy is active at all times
+
+set service "ALL"  ➡️  Allows all protocols and services (TCP, UDP, ICMP, etc.)
+
+set nat disable➡️   Disables NAT, keeping original source IP addresses unchanged
+
+next  ➡️  Saves policy 1 and moves to the next policy entry
+edit 2
+    set name "P-R4_to_R5"
+    set srcintf "port2"
+    set dstintf "port1"
+    set srcaddr "all"
+    set dstaddr "all"
+    set action accept
+    set schedule "always"
+    set service "ALL"
+    set nat disable
+next
+======================================================
+config firewall policy
+# 1️⃣ LAN/DMZ → WAN (Outbound)
+edit 1
+set name "LAN_to_WAN"
+set srcintf "port2"
+set dstintf "port1"
+set srcaddr "all"
+set dstaddr "all"
+set action accept
+set schedule "always"
+set service "ALL"
+set nat enable
+set logtraffic all
+set comments "Allow LAN/DMZ to reach WAN or Internet"
+next
+# 2️⃣ WAN → LAN/DMZ (Inbound testing / honeypot)
+edit 2
+    set name "WAN_to_LAN"
+    set srcintf "port1"
+    set dstintf "port2"
+    set srcaddr "all"
+    set dstaddr "LAN_Subnet"
+    set action accept
+    set schedule "always"
+    set service "ALL"
+    set nat disable
+    set logtraffic all
+    set comments "Allow inbound for honeypot simulation"
+next
+
+# 3️⃣ Deny unknown traffic between zones
+edit 3
+    set name "DENY_All"
+    set srcintf "any"
+    set dstintf "any"
+    set srcaddr "all"
+    set dstaddr "all"
+    set action deny
+    set schedule "always"
+    set service "ALL"
+    set logtraffic all
+    set comments "Final deny rule - log all drops"
+next
+
+​
+end
+======================================================
+SECURITY PROFILES (Optional)
+======================================================
+config antivirus profile
+edit "default"
+set comment "Default AV profile"
+config http
+set options scan
+end
+config ftp
+set options scan
+end
+config imap
+set options scan
+end
+next
+end
+config webfilter profile
+edit "default"
+set comment "Basic URL filter"
+config ftgd-wf
+set options error-allow
+end
+next
+end
+config ips sensor
+edit "default"
+set comment "Default IPS signature set"
+next
+end
+======================================================
+LOGGING & MONITORING
+======================================================
+config log syslogd setting
+set status enable
+set server "172.16.0.18"        # Example: log server on LAN
+set mode udp
+set port 514
+set facility local7
+end
+config log setting
+set fwpolicy-implicit-log enable
+set log-invalid-packet enable
+set resolve-ip enable
+end
+======================================================
+ADMIN ACCOUNTS & MANAGEMENT (Optional)
+======================================================
+config system admin
+edit "admin"
+set accprofile "super_admin"
+set password ENC <encrypted_password>
+set vdom root
+set trusthost1 172.16.0.0 255.255.255.0
+set trusthost2 172.16.0.16 255.255.255.240
+next
+end
+*Attacker_Switch :
+hostname Attacker_Switch        ➡️                                     Change device name 
+ip name-server 8.8.8.8                       ➡️                   Use Google DNS from the router
+ip name-server  1.1.1.1                         ➡️                    Use Cloudflare DNS as secondary.
+*Honeybot_Switch :
+hostname Honeybot_Switch 
+ip name-server 8.8.8.8                       ➡️                   Use Google DNS from the router
+ip name-server  1.1.1.1                         ➡️                    Use Cloudflare DNS as secondary.
